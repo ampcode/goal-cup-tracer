@@ -34,8 +34,8 @@ macOS" is fine when it is true.
 
 The worked example is [codex-cli.md](codex-cli.md). The other sheets so far are
 [claude-code-cli.md](claude-code-cli.md), [hermes-cli.md](hermes-cli.md) and
-[amp.md](amp.md); Amp's is a draft written by Goal Cup for the Amp team to correct, and is
-named after the harness because no connector id exists yet.
+[amp.md](amp.md); Amp's was drafted by Goal Cup and corrected by the Amp team, and is named
+after the harness because no connector id exists yet.
 
 The `Status:` line takes one of three values:
 
