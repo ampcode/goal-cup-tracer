@@ -35,7 +35,8 @@ macOS" is fine when it is true.
 The worked example is [codex-cli.md](codex-cli.md). The other sheets so far are
 [claude-code-cli.md](claude-code-cli.md), [hermes-cli.md](hermes-cli.md) and
 [amp.md](amp.md); Amp's was drafted by Goal Cup and corrected by the Amp team, and is named
-after the harness because no connector id exists yet.
+after the harness because no connector id exists yet. [amp-orb.md](amp-orb.md) is a variant
+for Amp threads that run in an orb.
 
 The `Status:` line takes one of three values:
 
