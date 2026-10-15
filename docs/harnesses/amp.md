@@ -7,7 +7,7 @@ Status: facts only
 How to read this sheet. Every fact names its source:
 
 - "Amp source" means the Amp team read it in Amp's source code at the commit this release was built from.
-- "measured (macOS)" means the Amp team ran the released npm binary on macOS 26.6, arm64, on 2026-10-12. Each run had an empty environment except `PATH=/usr/bin:/bin:/usr/sbin:/sbin`, a private `HOME` and `TMPDIR`. The execute runs also had an invented `AMP_API_KEY` and an `HTTPS_PROXY` that either refused connections or logged each `CONNECT` line and answered `403`, so no request left the machine.
+- "measured (macOS)" means the Amp team ran the released binary on macOS 26.6, arm64, on 2026-10-12 and 2026-10-15. Each run had an empty environment except `PATH=/usr/bin:/bin:/usr/sbin:/sbin`, a private `HOME` and `TMPDIR`. The execute runs also had an invented `AMP_API_KEY` and an `HTTPS_PROXY` that either refused connections or logged each `CONNECT` line and answered `403`, so no request left the machine.
 - "measured (Linux)" means Goal Cup's own key-free probe on Linux x86_64 in an offline network namespace. The full record is in the [Amp readiness record](../qualification/m2-amp-readiness.md). The Goal Cup changes made so far are in [amp-core-prep](../research/amp-core-prep.md).
 - "Amp docs" means [ampcode.com/docs](https://ampcode.com/docs) and the pages it links.
 
@@ -37,25 +37,28 @@ amp --execute=<goal> --stream-json
 
 ## 2. Install and pin a version
 
-- `npm install @ampcode/cli@0.0.1791676897-g77c125`. `@sourcegraph/amp` is the old package name. It is published at the same version as an alias whose only dependency is `@ampcode/cli`, and its README says the old name "still works for backwards compatibility for the time being". Use `@ampcode/cli` (npm metadata; Amp source).
-- `@ampcode/cli` has `postinstall: node install.cjs`, which hard-links (or copies) the platform package's `amp` to `bin/amp` and makes `bin/amp.exe` a symlink to it. Platform packages: `@ampcode/cli-{darwin-arm64,darwin-x64,linux-arm64,linux-x64,win32-x64}`. There is no Windows arm64 package (npm metadata; Amp source).
-- The executable is one native Bun 1.4.1 file: Mach-O on macOS, ELF on Linux, `amp.exe` on Windows. No `node` is needed at run time (measured (macOS): `Mach-O 64-bit executable arm64`).
-- Where it lands (measured (macOS), same as measured (Linux)): `<prefix>/node_modules/@ampcode/cli/bin/amp` is a regular file with link count 2, the same inode as `@ampcode/cli-darwin-arm64/amp`. `<prefix>/node_modules/.bin/amp` links to `bin/amp.exe`, which links to `amp`. `program = "amp"` resolves to that regular file.
-- Print the version: `amp --version` prints `0.0.1791676897-g77c125 (released 2026-10-11T00:01:37.000Z, …)`; `amp version` adds `npm package: @ampcode/cli` (measured (macOS)).
-- Goal Cup records the build instead of pinning it (D53). For a connector, `version_args = ["--version"]` prints one line.
-- Executable bytes for `0.0.1791676897-g77c125`:
+- Install with Amp's install script (Amp docs; measured (macOS) with a private `HOME`):
+  ```
+  curl -fsSL https://ampcode.com/install.sh | AMP_VERSION=0.0.1791676897-g77c125 bash
+  ```
+  Without `AMP_VERSION` the script installs the version named in `https://static.ampcode.com/cli/cli-version.txt` (the latest release). On Windows, `install.ps1` from `ampcode.com` installs `amp.exe` the same way, to `%AMP_HOME%\bin\amp.exe`, default `%USERPROFILE%\.amp\bin\amp.exe` (Amp source).
+- What the script does (Amp source; measured (macOS)): it detects the platform (`darwin-arm64`, `darwin-x64`, `linux-arm64`, `linux-x64` or `windows-x64`; a shell under Rosetta 2 gets `darwin-arm64`). It downloads `https://static.ampcode.com/cli/<version>/<platform>-amp.sha256` and `https://static.ampcode.com/cli/<version>/amp-<platform>.gz`, unpacks it and refuses it unless its SHA-256 matches. Then it writes the binary to `$AMP_HOME/bin/amp`, default `$HOME/.amp/bin/amp`, and makes a symlink to it in the first of `$HOME/.local/bin`, `$HOME/bin` and `$HOME/.bin` that is on `PATH`. If none is on `PATH`, it adds `$AMP_HOME/bin` to `PATH` in the shell profile. Signature checking with minisign is in the script but turned off.
+- Where it lands (measured (macOS)): `$HOME/.amp/bin/amp` is a regular file, mode 0755; `$HOME/.local/bin/amp` is a symlink to it. `program = "amp"` resolves through the symlink to that regular file.
+- The executable is one native Bun 1.4.1 file: Mach-O on macOS, ELF on Linux, `amp.exe` on Windows. It needs no `node` or other runtime (measured (macOS): `Mach-O 64-bit executable arm64`).
+- Print the version: `amp --version` and `amp version` both print one line, `0.0.1791676897-g77c125 (released 2026-10-11T00:01:37.000Z, …)` (measured (macOS)). Goal Cup records the build instead of pinning it (D53); for a connector, `version_args = ["--version"]`.
+- Executable bytes for `0.0.1791676897-g77c125`. Each `.sha256` file on `static.ampcode.com` names the same hash as the table:
 
   | Platform | Size (bytes) | SHA-256 | Source |
   |---|---|---|---|
-  | darwin-arm64 `amp` | 109,666,576 | `107c8b2c312e97447bd20d9f7d678d477195bd330753de81749b547bc7477f44` | measured (macOS): tarball, platform package and installed `bin/amp` are identical |
-  | darwin-x64 `amp` | 87,444,976 | `7e99fec7bfd68613cd73fe08f65abc4a9893ca5fff96e3a0d0d07905124dcc06` | npm tarball; not installed |
-  | linux-x64 `amp` | 134,157,792 | `6c1b791d8e2c4661460b96276860c289d50ff0cacadaf1061ccb401295792036` | measured (Linux): tarball, platform package and installed `bin/amp` are identical |
-  | linux-arm64 `amp` | unknown | unknown | not measured |
-  | win32-x64 `amp.exe` | 104,117,072 | `5b45b230455440d092ea159a44095f40df8b4f2c431b51ce79a1698dba2b50f7` | npm tarball; installed bytes not measured |
+  | darwin-arm64 `amp` | 109,666,576 | `107c8b2c312e97447bd20d9f7d678d477195bd330753de81749b547bc7477f44` | measured (macOS): the binary the install script wrote |
+  | darwin-x64 `amp` | 87,444,976 | `7e99fec7bfd68613cd73fe08f65abc4a9893ca5fff96e3a0d0d07905124dcc06` | published checksum and npm package; not installed |
+  | linux-arm64 `amp` | 133,351,720 | `e3c09ad066d3970df6ecc178393a7d70257db66ef245c80892142242073b01f0` | downloaded from `static.ampcode.com` and hashed; not installed |
+  | linux-x64 `amp` | 134,157,792 | `6c1b791d8e2c4661460b96276860c289d50ff0cacadaf1061ccb401295792036` | published checksum; measured (Linux) from the npm package |
+  | windows-x64 `amp.exe` | 104,117,072 | `5b45b230455440d092ea159a44095f40df8b4f2c431b51ce79a1698dba2b50f7` | published checksum and npm package; not installed |
 
-- Other ways to install (Amp docs; Amp source): the install script `curl -fsSL https://ampcode.com/install.sh | bash` puts the binary in `$AMP_HOME/bin/amp`, default `$HOME/.amp/bin/amp`, and links it from `$HOME/.local/bin/amp`; on Windows `install.ps1` puts it in `%USERPROFILE%\.amp\bin\amp.exe`. Homebrew: `ampcode/tap/ampcode`.
-- `amp update` finds how Amp was installed: a Homebrew install runs `brew upgrade ampcode/tap/ampcode`; a global npm, pnpm, yarn or bun install runs that package manager's global install of `@ampcode/cli`; an install-script binary downloads the new binary from `static.ampcode.com`, checks its SHA-256 and replaces `$AMP_HOME/bin/amp`. Execute mode never checks for updates and never updates itself (Amp source).
-- Releases are frequent. On 2026-10-12 the npm dist-tag `latest` already pointed to `0.0.1791806555-g425e34`; the dist-tag `next` is an older line from 2026-05-14 (npm metadata).
+- Updates: a binary from the install script updates itself. The interactive CLI checks `cli-version.txt` and, with `amp.updates.mode` at its default `auto`, downloads the new binary, checks its SHA-256 and atomically replaces `$AMP_HOME/bin/amp`; `amp update` does the same on request. Execute mode never checks for updates and never updates itself (Amp source). A running process keeps the file it started from, but another Amp session of the same user can replace `$HOME/.amp/bin/amp` during a Goal Cup run; `AMP_SKIP_UPDATE_CHECK=1` or `amp.updates.mode: "disabled"` in that session prevents it.
+- Other ways to install, not recommended for Goal Cup: the npm package `@ampcode/cli` (the old name `@sourcegraph/amp` still resolves), which holds the same bytes per platform (measured (macOS) for darwin-arm64), and Homebrew, `ampcode/tap/ampcode` (Amp source). `amp update` follows the way Amp was installed (Amp source).
+- Releases are frequent. On 2026-10-15, `cli-version.txt` named `0.0.1792051250-g2fc5c0`.
 
 ## 3. Where it keeps things, per OS
 
@@ -101,7 +104,7 @@ Skills: Amp loads skills from `$HOME/.config/agents/skills`, `$HOME/.agents/skil
   - `storage.googleapis.com` (bucket `amp-public-assets-prod-0`), only to download ripgrep when `rg` is not on `PATH` and `AMP_RIPGREP_PATH` is unset; the download is checked against a SHA-256 and, on macOS, Amp's code signature (Amp source).
   - Assets that a tool uploads may go to a signed storage URL that the server returns (Amp source).
   - MCP servers configured in settings, and plugins (local or synced from the server), can contact any host.
-- **Update check.** Not in execute mode. Elsewhere `https://static.ampcode.com/cli/cli-version.txt` (or the npm registry for an npm install). `AMP_SKIP_UPDATE_CHECK=1` or `amp.updates.mode: "disabled"` turns it off (Amp source).
+- **Update check.** Not in execute mode. Elsewhere `https://static.ampcode.com/cli/cli-version.txt` (the npm registry for an npm install). `AMP_SKIP_UPDATE_CHECK=1` or `amp.updates.mode: "disabled"` turns it off (Amp source).
 - **Telemetry.** `POST https://ampcode.com/api/telemetry` with feature-usage events, for example MCP connections, managed-settings use and use of `--dangerously-allow-all`. This version has no client setting to turn it off. There is no third-party analytics, and no OpenTelemetry exporter (Amp source).
 - **`HTTPS_PROXY`.** The HTTPS requests use Bun's `fetch`, which honours `HTTPS_PROXY`, `https_proxy`, `HTTP_PROXY`, `http_proxy` and `NO_PROXY` (measured: the logging proxy above). The WebSocket uses a bundled undici WebSocket with an environment proxy agent, which reads the same variables (lower case first) once at startup (Amp source; tested by the Amp team with a bundle built the same way as the release, not in an authenticated run). `AMP_USE_NATIVE_WEBSOCKET=1` switches to Bun's own WebSocket, which ignores the proxy; do not set it. The `amp.proxy` setting is copied into `HTTP_PROXY`/`HTTPS_PROXY` only when they are unset, and too late to reach the WebSocket. Uploads to a signed storage URL may not use `HTTPS_PROXY` (Amp source; not tested).
 - **Custom CA.** `NODE_EXTRA_CA_CERTS` adds to Bun's bundled Mozilla roots, for both the HTTPS requests and the WebSocket. Without it, a certificate from an unknown CA fails with `UNABLE_TO_VERIFY_LEAF_SIGNATURE`; there is no fallback that accepts it. The OS trust store is added only with `NODE_USE_SYSTEM_CA=1` or `--use-system-ca`. On Windows, Amp also loads the Windows root certificates. Amp has no CA setting of its own (Amp source; tested by the Amp team with a private CA and a bundle built the same way as the release, not in an authenticated run).
@@ -178,8 +181,8 @@ Two options need a Goal Cup core change instead: accept the stream JSON on stdou
 8. **macOS and Windows locations?** See section 3. Full macOS managed-settings path: `/Library/Application Support/ampcode/managed-settings.json`.
 9. **Claude Code in execute mode?** `--mode external-agent:claude-code`. Creating such a thread needs no experimental feature, but a workspace policy can block it. `amp config external-agents` manages its settings, and its help says that command needs the "External agents" experimental feature.
 10. **Claude Code child?** Found in `$HOME/.local/bin`, `$HOME/bin`, then `PATH`. It inherits `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS`. No `persistSession` or `sessionStore`: Amp streams its events to Amp's server, which keeps them as the Amp thread.
-11. **Update check?** It does not run in execute mode. `AMP_SKIP_UPDATE_CHECK=1` suppresses it elsewhere. On an npm install, `amp update` runs the package manager's global install of `@ampcode/cli`.
+11. **Update check?** It does not run in execute mode. `AMP_SKIP_UPDATE_CHECK=1` suppresses it elsewhere. For a binary from the install script, `amp update` (and the interactive CLI, unless updates are turned off) replaces `$AMP_HOME/bin/amp`; see section 2.
 12. **`--executor local` and `AMP_HOME`?** Local keeps tool execution on this machine; the thread, inference and transcript stay on Amp's server. `AMP_HOME` only sets the install-script binary location (default `$HOME/.amp`); it moves no settings, data, cache or logs.
 13. **Guidance files in ancestors?** Yes, up to but not including `/`, `/Users` or `/home`. See section 3.
 14. **Bring-your-own-key?** Through Amp's server: the server calls the provider with the stored key, not the CLI.
-15. **Installed bytes?** macOS arm64: the installed `bin/amp` is the same as the tarball (measured). macOS x64 and Windows hashes are from the tarballs; installed bytes there are not measured, but `install.cjs` links or copies the file without changing it (Amp source).
+15. **Installed bytes?** The install script writes exactly the bytes named in the published `.sha256` file, and it refuses any other. On macOS arm64 the installed `$HOME/.amp/bin/amp` matched both the published checksum and the npm package (measured). For darwin-x64, linux-arm64 and windows-x64 the published checksum, the npm package and (for linux-arm64) the downloaded file agree; nobody installed them for this sheet.
